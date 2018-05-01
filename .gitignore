@@ -1,0 +1,5 @@
+*.pyc
+__pycache__
+*.blend[1-9]
+Levels/*.svg
+Levels/*-physics.blend
