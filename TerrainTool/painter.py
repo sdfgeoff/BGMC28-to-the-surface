@@ -165,6 +165,8 @@ class WorldMap():
 		self.update = self.skip
 		self.obj = obj
 		self.resolution = mathutils.Vector(resolution)
+		
+		self.physics_objects = list()
 
 		self.obj.color = [
 			config.PIXELS_PER_BU*2/resolution[0],
@@ -186,7 +188,7 @@ class WorldMap():
 		pos = world_pos.xy * config.PIXELS_PER_BU
 		pos += self.resolution/2
 		pos -= mathutils.Vector([brush.MAX_SIZE, brush.MAX_SIZE])/2
-		print(fill, color)
+		
 		if color:
 			self.tex.source.plot(
 				brush.raw, 
@@ -228,11 +230,31 @@ class WorldMap():
 			ROOT_DIR,
 			blend
 		))
-		#full_path = os.path.dirname(filename) + '/' + blend
-		#if full_path in bge.logic.LibList():
-		#	bge.logic.LibFree(full_path)
-		#print(full_path)
-		#bge.logic.LibLoad(full_path, 'SCENE', async=False)
+		self.load_physics(filename)
+		
+	def load_physics(self, filename):
+		full_path = filename + '-physics.blend'
+		self.physics_objects = []
+		
+		if full_path in bge.logic.LibList():
+			print("Freeing previous physics")
+			bge.logic.LibFree(full_path)
+		if os.path.exists(full_path):
+			print("Loading physics from", full_path)
+			existing_objs = list(self.obj.scene.objects)
+			bge.logic.LibLoad(full_path, 'Scene')
+			
+			for obj in self.obj.scene.objects:
+				if obj not in existing_objs:
+					self.physics_objects.append(obj)
+					
+			for obj in self.physics_objects:
+				# TODO: Temporary hack because don't know the pixels size
+				# in the generate mesh stage
+				obj.worldPosition.xy += self.resolution / config.PIXELS_PER_BU / 2
+			
+		else:
+			print("Physics does not exist")
 
 	def redraw(self):
 		self.tex.refresh(True)
@@ -256,6 +278,7 @@ class WorldMap():
 		)
 		
 		self.tex.refresh(False)
+		self.load_physics(filename)
 		self.update = self.redraw
 
 
