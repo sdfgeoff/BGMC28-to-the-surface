@@ -7,6 +7,9 @@ import config
 import time
 
 
+levelname = 'test'
+
+
 NAME_TO_PARAM = {
 	"GrowthDial": "growth",
 	"RockDial": "rock",
@@ -19,11 +22,21 @@ def selector(cont):
 	if "SELECTOR" not in cont.owner:
 		cont.owner["SELECTOR"] = Selector(cont.owner.scene)
 		cont.owner['prof'] = cProfile.Profile()
+		return
 	
 	cont.owner["prof"].runcall(cont.owner["SELECTOR"].update)
 	if bge.logic.keyboard.events[bge.events.F1KEY] == 1:
 		cont.owner["prof"].print_stats(sort='tottime')
 
+
+LEVEL_DIR = os.path.normpath(os.path.join(
+	os.path.dirname(os.path.abspath(__file__)), 
+	'../ToTheSurface/Levels'
+))
+ROOT_DIR = os.path.normpath(os.path.join(
+	os.path.dirname(os.path.abspath(__file__)), 
+	'../'
+))
 
 class Selector:
 	def __init__(self, scene):
@@ -51,12 +64,19 @@ class Selector:
 		self.map = WorldMap(scene.objects['World'], [1024, 1024])
 
 		self._start_pos = None  # Mouse world panning
+		
+		self.map.load(
+			os.path.join(LEVEL_DIR, levelname)
+		)
+		
 
 	def update(self):
 		if self.count < 2:
 			self.count += 1
 			self._preview.refresh()
 		self.mouse.update()
+		
+		self.map.update()
 
 
 		if bge.events.MIDDLEMOUSE in bge.logic.mouse.active_events:
@@ -76,13 +96,9 @@ class Selector:
 		elif bge.events.WHEELDOWNMOUSE in bge.logic.mouse.active_events:
 			self.scene.active_camera.ortho_scale *= 1.25
 
-			
 		self.panel.update()
 		if bge.logic.keyboard.events[bge.events.F2KEY] == 1:
-			self.map.save(os.path.join(
-				os.path.dirname(os.path.abspath(__file__)),
-				"test")
-			)
+			self.map.save(os.path.join(LEVEL_DIR, levelname))
 
 	def _set_brush_param_raw(self, obj, _pos, _nor, _poly, uv, button):
 		if button == 'left':
@@ -115,8 +131,18 @@ class Selector:
 			fill = False
 		elif button == 'right':
 			fill = True
-		if fill != None:
-			self.map.draw(self.brush, pos, fill=fill)
+		else:
+			return
+		
+		if bge.events.LEFTSHIFTKEY in bge.logic.keyboard.active_events :
+			fill = None
+		
+		if bge.events.LEFTALTKEY in bge.logic.keyboard.active_events:
+			color = False
+		else:
+			color = True
+			
+		self.map.draw(self.brush, pos, fill=fill, color=color)
 
 class Panel:
 	def __init__(self, obj):
@@ -133,8 +159,10 @@ class Panel:
 		self.obj.localPosition.x = -scale/2
 		self.obj.localPosition.y = height/2
 
+
 class WorldMap():
 	def __init__(self, obj, resolution):
+		self.update = self.skip
 		self.obj = obj
 		self.resolution = mathutils.Vector(resolution)
 
@@ -147,31 +175,40 @@ class WorldMap():
 
 		self.tex = bge.texture.Texture(obj, 0, 0)
 		self.tex.source = bge.texture.ImageBuff(resolution[0], resolution[1], 0)
-		#self.tex.source.load(b'\xFF\x00\xFF' * (resolution[0] * resolution[1]), resolution[0], resolution[1])
+		self.tex.source.load(b'\xFF\x00\xFF' * (resolution[0] * resolution[1]), resolution[0], resolution[1])
 		self.tex.refresh(False)
 		self.obj.scene.objects["EdgeIndicator"].localScale.xy = self.resolution / config.PIXELS_PER_BU
+		
+		
 
-	def draw(self, brush, world_pos, fill=False):
+	def draw(self, brush, world_pos, fill=False, color=True):
 		"""Draws with the brush at the specified world coordiantes"""
 		pos = world_pos.xy * config.PIXELS_PER_BU
 		pos += self.resolution/2
 		pos -= mathutils.Vector([brush.MAX_SIZE, brush.MAX_SIZE])/2
-
-		self.tex.source.plot(
-			brush.raw, 
-			brush.MAX_SIZE, brush.MAX_SIZE,
-			int(pos.x), int(pos.y),
-			bge.texture.IMB_BLEND_HARDLIGHT
-		)
+		print(fill, color)
+		if color:
+			self.tex.source.plot(
+				brush.raw, 
+				brush.MAX_SIZE, brush.MAX_SIZE,
+				int(pos.x), int(pos.y),
+				bge.texture.IMB_BLEND_COLOR
+			)
+			self.tex.source.plot(
+				brush.raw, 
+				brush.MAX_SIZE, brush.MAX_SIZE,
+				int(pos.x), int(pos.y),
+				bge.texture.IMB_BLEND_LUMINOSITY
+			)
 		
-		if fill:
+		if fill is True:
 			self.tex.source.plot(
 				brush.alpha, 
 				brush.MAX_SIZE, brush.MAX_SIZE,
 				int(pos.x), int(pos.y),
 				bge.texture.IMB_BLEND_ERASE_ALPHA
 			)
-		else:
+		elif fill is False:
 			self.tex.source.plot(
 				brush.alpha, 
 				brush.MAX_SIZE, brush.MAX_SIZE,
@@ -186,9 +223,9 @@ class WorldMap():
 		img = Image.frombytes("RGBA", (int(self.resolution[0]), int(self.resolution[1])), bytes(self.tex.source.image))
 		img.save(filename + '.png')
 		time.sleep(0.1)
-		blend = os.path.split(filename)[1] + '.blend'
+		blend = filename + '.blend'
 		os.system("cd {}; make {}".format(
-			os.path.dirname(filename),
+			ROOT_DIR,
 			blend
 		))
 		#full_path = os.path.dirname(filename) + '/' + blend
@@ -196,7 +233,30 @@ class WorldMap():
 		#	bge.logic.LibFree(full_path)
 		#print(full_path)
 		#bge.logic.LibLoad(full_path, 'SCENE', async=False)
+
+	def redraw(self):
+		self.tex.refresh(True)
+		self.update = self.skip
 		
+	def skip(self):
+		pass
+		
+
+	def load(self, filename):
+		from PIL import Image
+		image = Image.open(filename + '.png')
+		self.resolution = mathutils.Vector(image.size)
+		self.tex.source.load(b'\xFF\x00\xFF' * (image.size[0] * image.size[1]), image.size[0], image.size[1])
+		
+		self.tex.source.plot(
+			image.tobytes(), 
+			image.size[0], image.size[0],
+			0, 0,
+			bge.texture.IMB_BLEND_COPY
+		)
+		
+		self.tex.refresh(False)
+		self.update = self.redraw
 
 
 class Brush():
