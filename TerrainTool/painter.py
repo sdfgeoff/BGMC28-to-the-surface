@@ -16,6 +16,7 @@ NAME_TO_PARAM = {
 	"WaterDial": "water",
 	"RadiusDial": "radius",
 	"SoftnessDial": "softness",
+	"AlphaDial": "alpha",
 }
 
 def selector(cont):
@@ -49,6 +50,8 @@ class Selector:
 			self.mouse.add_obj_function(scene.objects[obj_name], self._set_brush_param_raw)
 		self.mouse.add_obj_function(scene.objects["World"], self._update_brush_pos)
 		self.mouse.add_obj_function(scene.objects["World"], self.draw)
+		self.mouse.add_obj_function(scene.objects["World"], self.zoom)
+		self.mouse.add_obj_function(scene.objects["BrushPreview"], self._toggle_preview)
 		self.brush.on_change.append(self.update_previews)
 		self.brush.on_change.append(self._update_brush_scale)
 
@@ -57,19 +60,23 @@ class Selector:
 		self.brush.rock = 1.0
 		self.brush.water = 0.0
 		self.brush.softness = 0.5
+		self.brush.alpha = 1.0
 		self.brush.regenerate_brush()
 
-		self.count = 0
 		self.panel = Panel(scene.objects["Panel"])
 		self.map = WorldMap(scene.objects['World'], [1024, 1024])
 
+		self.count = 0
 		self._start_pos = None  # Mouse world panning
 		
 		self.map.load(
 			os.path.join(LEVEL_DIR, levelname)
 		)
 		
-
+		
+		self.enable_color = True
+		self.enable_alpha = True
+		
 	def update(self):
 		if self.count < 2:
 			self.count += 1
@@ -78,8 +85,101 @@ class Selector:
 		
 		self.map.update()
 
+		self.panel.update()
+		if bge.logic.keyboard.events[bge.events.F2KEY] == 1:
+			self.map.save(os.path.join(LEVEL_DIR, levelname))
+			
+		if bge.logic.keyboard.events[bge.events.LEFTSHIFTKEY] == 1:
+			self._toggle_alpha()
+		if bge.logic.keyboard.events[bge.events.LEFTALTKEY] == 1:
+			self._toggle_color()
 
-		if bge.events.MIDDLEMOUSE in bge.logic.mouse.active_events:
+	def _toggle_alpha(self, *args):
+		self.enable_alpha = not self.enable_alpha
+		self.scene.objects["EnableAlpha"].color = [self.enable_alpha, 0, 0, 1]
+			
+	def _toggle_color(self, *args):
+		self.enable_color = not self.enable_color
+		self.scene.objects["EnableColor"].color = [self.enable_color, 0, 0, 1]
+
+	def _set_brush_param_raw(self, obj, _pos, _nor, _poly, uv, button):
+		"""Interaction with one of the side-panel dials"""
+		if button == 'left':
+			name = NAME_TO_PARAM[obj.name]
+			val = uv.y
+			self.brush.set_param(name, val)
+		elif button == 'scrollup':
+			name = NAME_TO_PARAM[obj.name]
+			val = self.brush.get_param(name) + 0.03
+			while val > 1.0:
+				val -= 1
+			self.brush.set_param(name, val)
+		elif button == 'scrolldown':
+			name = NAME_TO_PARAM[obj.name]
+			val = self.brush.get_param(name) - 0.03
+			while val < 0.0:
+				val += 1
+			self.brush.set_param(name, val)
+
+
+	def update_previews(self, _):
+		"""Updates the position of the dials"""
+		self._preview.refresh()
+		for obj_name in NAME_TO_PARAM:
+			obj = self.scene.objects[obj_name]
+			val = self.brush.__dict__[NAME_TO_PARAM[obj.name]]
+			obj.children[0].worldOrientation = [0, 0, val*2*math.pi]
+			
+	def _toggle_preview(self, obj, pos, _nor, _poly, _uv, button, static=[True]):
+		if button == 'left':
+			if static[0] == True:
+				self._preview.invert = not self._preview.invert
+				static[0] = False
+		else:
+			static[0] = True
+
+
+	def _update_brush_pos(self, obj, pos, _nor, _poly, _uv, _button):
+		"""Moves the red brush position indicator"""
+		self.scene.objects["BrushIndicator"].worldPosition = pos + mathutils.Vector([0, 0, 1])
+	
+	def _update_brush_scale(self, _):
+		"""changes the red brush position indicator"""
+		scale = self.brush.radius * self.brush.MAX_SIZE / config.PIXELS_PER_BU
+		indicator = self.scene.objects["BrushIndicator"]
+		indicator.localScale = [scale] * 3
+		indicator.children[0].localScale = [1.0 - self.brush.softness] * 3
+
+	def draw(self, obj, pos, _nor, _poly, _uv, button):
+		"""Paints onto the canvas"""
+		fill = None
+		if button == 'left':
+			self._preview.invert = False
+			fill = False
+		elif button == 'right':
+			self._preview.invert = True
+			fill = True
+		else:
+			return
+		
+		if not self.enable_alpha:
+			fill = None
+		
+		if self.enable_color:
+			color = True
+		else:
+			color = False
+			
+		self.map.draw(self.brush, pos, fill=fill, color=color)
+		
+	def zoom(self, obj, pos, _nor, _poly, _uv, button):
+		"""Handles mouse pan/zoom"""
+		if button == 'scrollup':
+			self.scene.active_camera.ortho_scale *= 0.8
+		elif button == 'scrolldown':
+			self.scene.active_camera.ortho_scale *= 1.25
+			
+		elif button == 'middle':
 			if self._start_pos != None:
 				delta = mathutils.Vector(bge.logic.mouse.position) - self._start_pos
 				delta.x *= self.scene.active_camera.ortho_scale
@@ -90,59 +190,7 @@ class Selector:
 			self._start_pos = mathutils.Vector(bge.logic.mouse.position)
 		else:
 			self._start_pos = None
-
-		if bge.events.WHEELUPMOUSE in bge.logic.mouse.active_events:
-			self.scene.active_camera.ortho_scale *= 0.8
-		elif bge.events.WHEELDOWNMOUSE in bge.logic.mouse.active_events:
-			self.scene.active_camera.ortho_scale *= 1.25
-
-		self.panel.update()
-		if bge.logic.keyboard.events[bge.events.F2KEY] == 1:
-			self.map.save(os.path.join(LEVEL_DIR, levelname))
-
-	def _set_brush_param_raw(self, obj, _pos, _nor, _poly, uv, button):
-		if button == 'left':
-			name = NAME_TO_PARAM[obj.name]
-			val = uv.y
-			self.brush.set_param(name, val)
-
-
-	def update_previews(self, _):
-		self._preview.refresh()
-		for obj_name in NAME_TO_PARAM:
-			obj = self.scene.objects[obj_name]
-			#obj.color = [self.brush.growth, self.brush.rock, self.brush.water, 0]
-			val = self.brush.__dict__[NAME_TO_PARAM[obj.name]]
-			obj.children[0].worldOrientation = [0, 0, val*2*math.pi]
-
-
-	def _update_brush_pos(self, obj, pos, _nor, _poly, _uv, _button):
-		self.scene.objects["BrushIndicator"].worldPosition = pos + mathutils.Vector([0, 0, 1])
-	
-	def _update_brush_scale(self, _):
-		scale = self.brush.radius * self.brush.MAX_SIZE / config.PIXELS_PER_BU
-		indicator = self.scene.objects["BrushIndicator"]
-		indicator.localScale = [scale] * 3
-		indicator.children[0].localScale = [1.0 - self.brush.softness] * 3
-
-	def draw(self, obj, pos, _nor, _poly, _uv, button):
-		fill = None
-		if button == 'left':
-			fill = False
-		elif button == 'right':
-			fill = True
-		else:
-			return
 		
-		if bge.events.LEFTSHIFTKEY in bge.logic.keyboard.active_events :
-			fill = None
-		
-		if bge.events.LEFTALTKEY in bge.logic.keyboard.active_events:
-			color = False
-		else:
-			color = True
-			
-		self.map.draw(self.brush, pos, fill=fill, color=color)
 
 class Panel:
 	def __init__(self, obj):
@@ -191,13 +239,13 @@ class WorldMap():
 		
 		if color:
 			self.tex.source.plot(
-				brush.raw, 
+				brush.raw_array, 
 				brush.MAX_SIZE, brush.MAX_SIZE,
 				int(pos.x), int(pos.y),
 				bge.texture.IMB_BLEND_COLOR
 			)
 			self.tex.source.plot(
-				brush.raw, 
+				brush.raw_array, 
 				brush.MAX_SIZE, brush.MAX_SIZE,
 				int(pos.x), int(pos.y),
 				bge.texture.IMB_BLEND_LUMINOSITY
@@ -205,14 +253,14 @@ class WorldMap():
 		
 		if fill is True:
 			self.tex.source.plot(
-				brush.alpha, 
+				brush.alpha_array, 
 				brush.MAX_SIZE, brush.MAX_SIZE,
 				int(pos.x), int(pos.y),
 				bge.texture.IMB_BLEND_ERASE_ALPHA
 			)
 		elif fill is False:
 			self.tex.source.plot(
-				brush.alpha, 
+				brush.alpha_array, 
 				brush.MAX_SIZE, brush.MAX_SIZE,
 				int(pos.x), int(pos.y),
 				bge.texture.IMB_BLEND_ADD_ALPHA
@@ -249,6 +297,11 @@ class WorldMap():
 					self.physics_objects.append(obj)
 					
 			for obj in self.physics_objects:
+				obj.color = [0, 1, 0, 1]
+				obj.meshes[0].replaceMaterial(
+					0,
+					self.obj.scene.objects["EdgeIndicator"].meshes[0].materials[0]
+				)
 				# TODO: Temporary hack because don't know the pixels size
 				# in the generate mesh stage
 				obj.worldPosition.xy += self.resolution / config.PIXELS_PER_BU / 2
@@ -291,12 +344,15 @@ class Brush():
 		self.water = 0
 		self.radius = 0
 		self.softness = 0
-		self.erase = False
+		self.alpha = 0
 		self.on_change = list()
 
-		self.raw = bytearray(self.MAX_SIZE * self.MAX_SIZE * self.BPP)
-		self.alpha = bytearray(self.MAX_SIZE * self.MAX_SIZE * self.BPP)
+		self.raw_array = bytearray(self.MAX_SIZE * self.MAX_SIZE * self.BPP)
+		self.alpha_array = bytearray(self.MAX_SIZE * self.MAX_SIZE * self.BPP)
 		self.regenerate_brush()
+
+	def get_param(self, name):
+		return self.__dict__[name]
 
 	def set_param(self, name, val):
 		self.__dict__[name] = val
@@ -316,16 +372,16 @@ class Brush():
 					radius = 0
 				else:
 					radius = max(0, (tmp_rad - dist)/tmp_rad)
-				soft = radius ** (self.softness * 5.0)
+				soft = radius ** (self.softness * 5.0) * self.alpha
 				col = [
 					int(self.growth*255),
 					int(self.rock*255),
 					int(self.water*255),
 					int(soft*255)
 				]
-				self.alpha[pixel_num:pixel_num+4] = col
+				self.alpha_array[pixel_num:pixel_num+4] = col
 				col[3] = int((soft ** 0.8) * 255)
-				self.raw[pixel_num:pixel_num+4] = col
+				self.raw_array[pixel_num:pixel_num+4] = col
 		call_list(self.on_change, [self])
 
 
@@ -337,11 +393,22 @@ class BrushPreview:
 		self.tex.source = bge.texture.ImageBuff(brush.MAX_SIZE, brush.MAX_SIZE, 0)
 		self.tex.refresh(False)
 		self.obj["tex"] = self.tex
+		
+	@property
+	def invert(self):
+		return self.obj.color[0] < 0.5
+	
+	@invert.setter
+	def invert(self, val):
+		if val:
+			self.obj.color = [0, 0, 0, 1]
+		else:
+			self.obj.color = [1, 0, 0, 1]
 
 	def refresh(self):
 		size = self.brush.MAX_SIZE
 		self.tex.source.load(b'\xFF\xFF\xFF' * (size ** 2), size, size)
-		self.tex.source.plot(self.brush.raw, size, size, 0, 0)
+		self.tex.source.plot(self.brush.raw_array, size, size, 0, 0)
 		self.tex.refresh(False)
 
 
@@ -378,6 +445,11 @@ class MouseCasterOrtho:
 				button = 'right'
 			elif bge.events.MIDDLEMOUSE in bge.logic.mouse.active_events:
 				button = 'middle'
+			elif bge.events.WHEELUPMOUSE in bge.logic.mouse.active_events:
+				button = 'scrollup'
+			elif bge.events.WHEELDOWNMOUSE in bge.logic.mouse.active_events:
+				button = 'scrolldown'
+
 			call_list(
 				self.known_objects[hit_obj], 
 				[hit_obj, pos, nor, poly, uv, button]
