@@ -21,11 +21,20 @@ def init(cont):
     cont.owner['SHIP'].fly(thrust, steer)
 
 
+class NamedList(list):
+	def __init__(self):
+		super().__init__()
+		
+	def __getitem__(self, name):
+		return next(i for i in self if i.name == name)
+
+
 class Ship:
     """The thing the player flies around"""
     def __init__(self, rootobj):
         self.rootobj = rootobj
-        objs = self.rootobj.groupObject.groupMembers
+        objs = NamedList()
+        objs += self.rootobj.groupObject.groupMembers
         for obj in self.rootobj.groupObject.groupMembers:
             objs += obj.childrenRecursive
 
