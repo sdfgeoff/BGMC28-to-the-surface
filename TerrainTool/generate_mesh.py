@@ -9,9 +9,12 @@ import config
 
 def assign_material(obj):
 	mat = bpy.data.materials.new("Wire")
-	mat.type = 'WIRE'
+	#mat.type = 'WIRE'
 	mat.use_shadeless = True
 	mat.diffuse_color = mathutils.Color([0,1,0])
+	mat.use_transparency = True
+	mat.alpha = 0.01
+	
 	obj.data.materials[0] = mat
 
 

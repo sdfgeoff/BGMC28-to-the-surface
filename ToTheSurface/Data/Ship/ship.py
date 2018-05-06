@@ -3,6 +3,7 @@ import bge
 
 
 DUST_DISTANCE = 8
+TORQUE = 20
 
 
 def init(cont):
@@ -59,7 +60,7 @@ class Ship:
         self._update_legs()
         self._update_drag()
         self._update_engines()
-        self._update_particles()
+        #self._update_particles()
 
     def _update_legs(self):
         for obj in self.objs:
@@ -137,18 +138,18 @@ class Ship:
         self._right = self._right * 0.8 + self._target_right * 0.2
 
         self.rootobj.applyForce([0, 0, self._left*40], True)
-        self.rootobj.applyTorque([0, self._left*40, 0])
+        self.rootobj.applyTorque([0, self._left*TORQUE, 0])
         self.rootobj.applyForce([0, 0, self._right*40], True)
-        self.rootobj.applyTorque([0, self._right*-40, 0])
+        self.rootobj.applyTorque([0, self._right*-TORQUE, 0])
 
         light = self.objs['EngineLights']
         light.energy = min(10.0, (self._left + self._right) * 10.0)
         n_steer = self._left - self._right
-        light.localPosition.x = -n_steer/2
+        light.localPosition.x = -n_steer/4
         light.spotblend = abs(n_steer) * 0.5 + 0.5
         light.spotsize = 80.0 - abs(n_steer) * 20.0 - bge.logic.getRandomFloat() * 8
 
-        light.localPosition.y = 4.1-light.spotsize/40
+        light.localPosition.y = (4.1-light.spotsize/40) / 2
 
         self.objs['LeftFlame'].color = [self._left] * 3 + [1]
         self.objs['RightFlame'].color = [self._right] * 3 + [1]
