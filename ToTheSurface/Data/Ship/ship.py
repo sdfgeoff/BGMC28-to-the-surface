@@ -60,7 +60,7 @@ class Ship:
         self._update_legs()
         self._update_drag()
         self._update_engines()
-        #self._update_particles()
+        self._update_particles()
 
     def _update_legs(self):
         for obj in self.objs:

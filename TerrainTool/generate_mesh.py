@@ -7,14 +7,17 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import config
 
+
+mat = bpy.data.materials.new("Wire")
+#mat.type = 'WIRE'
+mat.use_shadeless = True
+mat.diffuse_color = mathutils.Color([0,1,0])
+mat.use_transparency = True
+mat.alpha = 0.00
+mat.specular_alpha = 0.00
+mat.physics.friction = 1.0
+
 def assign_material(obj):
-	mat = bpy.data.materials.new("Wire")
-	#mat.type = 'WIRE'
-	mat.use_shadeless = True
-	mat.diffuse_color = mathutils.Color([0,1,0])
-	mat.use_transparency = True
-	mat.alpha = 0.01
-	
 	obj.data.materials[0] = mat
 
 
@@ -41,6 +44,7 @@ def process():
 		bpy.ops.mesh.select_all(action='SELECT')
 		# Simplify Mesh
 		bpy.ops.mesh.dissolve_limited(angle_limit=config.ANGLE_LIMIT)
+		bpy.ops.mesh.remove_doubles(threshold=config.MERGE_DISTANCE)
 		
 		# Give it faces
 		bpy.ops.mesh.extrude_edges_move()
@@ -48,7 +52,6 @@ def process():
 		
 		bpy.ops.mesh.extrude_edges_move
 		bpy.ops.object.mode_set(mode = 'OBJECT')
-		
 		
 		
 		assign_material(obj)

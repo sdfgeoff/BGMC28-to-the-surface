@@ -56,8 +56,8 @@ class Selector:
 		self.brush.on_change.append(self._update_brush_scale)
 
 		self.brush.radius = 0.5
-		self.brush.growth = 0.5
-		self.brush.rock = 1.0
+		self.brush.growth = 0.0
+		self.brush.rock = 0.0
 		self.brush.water = 0.0
 		self.brush.softness = 0.5
 		self.brush.alpha = 1.0
