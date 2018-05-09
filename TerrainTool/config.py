@@ -1,7 +1,7 @@
-PIXELS_PER_BU = 16  # For the terrain map
+PIXELS_PER_BU = 8  # For the terrain map
 
 # Rendering
-HIGHRES_MULTIPLIER = 8
+HIGHRES_MULTIPLIER = 16
 
 # Mesh generation
 ANGLE_LIMIT = 5 * 3.14 / 180 # Amount of simplification: min degrees per vert

@@ -1,13 +1,15 @@
 import math
 import bge
 import time
+import aud
+import os
 
 import common
 
 DUST_DISTANCE = 8
 TORQUE = 20
 FORCE = 40
-LIN_DRAG = 0.1
+LIN_DRAG = 0.05
 ANG_DRAG = 10
 
 
@@ -35,9 +37,15 @@ class Ship:
 		objs = NamedList()
 		objs += self.rootobj.groupObject.groupMembers
 		for obj in self.rootobj.groupObject.groupMembers:
-			objs += obj.childrenRecursive
+			for child in obj.childrenRecursive:
+				if child not in objs:
+					objs.append(child)
 
 		self.objs = objs
+		
+		for obj in self.objs:
+			if obj.getPhysicsId() != 0:
+				obj.collisionCallbacks.append(self._onhit)
 
 		self._leg_constraints = {}
 		self._setup_legs()
@@ -54,7 +62,23 @@ class Ship:
 		self.fly(0, 0)
 		
 		
+		self.hit_sound = HitSound()
+		self.left_booster_sound = BoosterSound()
+		self.right_booster_sound = BoosterSound()
+		self.wind_sound = WindSound()
+		self.left_leg_sound = LegMotorSound()
+		self.right_leg_sound = LegMotorSound()
+		
+		
 		self.on_ship_move = common.FunctionList()  # Called with world position
+
+	@property
+	def speed(self):
+		return self.rootobj.worldLinearVelocity.xz.length
+		
+	@property
+	def orientation(self):
+		return self.rootobj.worldOrientation.to_euler().y
 
 	def update(self):
 		"""Ensures the rocket is flying. Call every frame"""
@@ -63,6 +87,7 @@ class Ship:
 		self._update_engines()
 		self._update_particles()
 		self._update_light()
+		self.hit_sound.update()
 		
 		self.on_ship_move.fire(self.rootobj.worldPosition)
 		
@@ -94,6 +119,10 @@ class Ship:
 
 			constraint = self._leg_constraints[constraint_name]
 			constraint.setParam(10, target, force)
+			if constraint_name == 'left':
+				self.left_leg_sound.set_position(constraint.getParam(4))
+			else:
+				self.right_leg_sound.set_position(constraint.getParam(4))
 
 	def _update_drag(self):
 		damping = self.rootobj.worldAngularVelocity.copy()
@@ -107,6 +136,8 @@ class Ship:
 		self.rootobj.applyForce(drag)
 		self.objs['LeftLegPhysics'].applyForce(drag)
 		self.objs['RightLegPhysics'].applyForce(drag)
+		
+		self.wind_sound.set_velocity(drag.length)
 
 	def _update_particles(self):
 		"""Dust created by the rockets when near the ground"""
@@ -151,6 +182,9 @@ class Ship:
 	def _update_engines(self):
 		self._left = self._left * 0.8 + self._target_left * 0.2
 		self._right = self._right * 0.8 + self._target_right * 0.2
+		
+		self.left_booster_sound.set_thrust(self._left)
+		self.right_booster_sound.set_thrust(self._right)
 
 		self.rootobj.applyForce([0, 0, self._left*FORCE], True)
 		self.rootobj.applyTorque([0, self._left*TORQUE, 0])
@@ -208,5 +242,115 @@ class Ship:
 
 	def fly(self, thrust, steer):
 		"""Sets the state of the engines"""
-		self._target_left = max(0, thrust + steer)
-		self._target_right = max(0, thrust - steer)
+		self._target_left = min(1, max(0, thrust + steer))
+		self._target_right = min(1, max(0, thrust - steer))
+		
+	
+	def _onhit(self, *args):
+		
+		force = self.speed
+		if len(args) == 4:
+			for hitpoint in args[3]:
+				force = hitpoint.appliedImpulse
+		
+		self.hit_sound.set_speed(force)
+		
+		
+class HitSound:
+	DEVICE = aud.device()
+	def __init__(self):
+		path = os.path.dirname(os.path.abspath(__file__))
+		factory = aud.Factory(path + '/booster.wav').loop(-1)
+
+		# play the audio, this return a handle to control play/pause
+		self.handle = self.DEVICE.play(factory)
+		self.handle.volume = 0.001
+		
+		self.prev_speed = 0
+
+	def set_speed(self, percent):
+		accel = self.prev_speed - percent
+		self.prev_speed = percent
+		if abs(accel) > 1.0:
+			self.handle.volume = max(0, -accel, self.handle.volume)
+			self.handle.pitch = bge.logic.getRandomFloat()*5
+		
+	def update(self):
+		self.handle.volume *= 0.8
+		self.handle.pitch *= 0.5
+
+
+
+class BoosterSound:
+	DEVICE = aud.device()
+	def __init__(self):
+		path = os.path.dirname(os.path.abspath(__file__))
+		factory = aud.Factory(path + '/booster.wav').loop(-1)
+
+		# play the audio, this return a handle to control play/pause
+		self.handle = self.DEVICE.play(factory)
+		self.handle.volume = 0.001
+		self.prev_percent = 0
+		
+		self.oscillator = 0
+
+	def set_thrust(self, percent):
+		diff = percent - self.prev_percent
+		self.prev_percent = percent
+		
+		
+		self.handle.volume = percent ** 2
+		self.handle.pitch = max(0, (diff * 4 + 1.0) ** 2.0 * 0.8 + self.oscillator)
+		
+		
+		self.oscillator = (bge.logic.getRandomFloat() - 0.5) * 2 * 0.1 + self.oscillator * 0.9
+		self.oscillator = self.oscillator * 0.99
+
+
+class WindSound:
+	DEVICE = aud.device()
+	def __init__(self):
+		path = os.path.dirname(os.path.abspath(__file__))
+		factory = aud.Factory(path + '/wind.wav').loop(-1)
+		
+		self.oscillator = 0
+
+		# play the audio, this return a handle to control play/pause
+		self.handle = self.DEVICE.play(factory)
+		self.handle.volume = 0.001
+		self.prev_percent = 0
+
+	def set_velocity(self, speed):
+		speed = speed ** 0.5
+		self.handle.volume = max(0, speed * 0.02 + self.oscillator * 0.2)
+		self.handle.pitch = max(0, (speed * 0.5 + self.oscillator * 0.2) * 0.3)
+		
+		
+		self.oscillator = (bge.logic.getRandomFloat() - 0.5) * 2 * 0.1 + self.oscillator * 0.9
+		self.oscillator = self.oscillator * 0.5 + 0.5 * 0.5
+		
+
+class LegMotorSound:
+	DEVICE = aud.device()
+	def __init__(self):
+		path = os.path.dirname(os.path.abspath(__file__))
+		factory = aud.Factory(path + '/legmotors.wav').loop(-1)
+
+		self.handle = self.DEVICE.play(factory)
+		self.handle.volume = 0.001
+		self.prev_position = 0
+		self.prev_speed = 0
+
+	def set_position(self, position):
+		speed = abs(self.prev_position - position)
+		accel = abs(speed - self.prev_speed)
+		self.prev_speed = speed
+		
+
+		self.prev_position = position
+		accel = min(accel, 0.016)
+		speed = min(speed, 0.016)
+		
+		self.handle.volume = max(0, speed * 10 - accel * 10)
+		self.handle.pitch = max(0, (speed * 50) ** 10 + 0.2 - accel * 10.0)
+		

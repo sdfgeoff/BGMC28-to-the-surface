@@ -1,7 +1,7 @@
 import math
 import bge
 import mathutils
-
+import time
 
 class HUD:
 	def __init__(self, scene):
@@ -33,14 +33,16 @@ class HUD:
 
 
 class MajorText:
+	MAX_TIME = 8.0
 	def __init__(self, root_obj):
 		self.obj = root_obj
 		fix_text(self.obj)
-
-		self.text = ''
+		self.start_time = time.time()
 		self.scale = 0
-		
 		self.closing = True
+		
+		#self.text = ''
+		
 		
 	@property
 	def visible(self):
@@ -64,6 +66,7 @@ class MajorText:
 		self.obj.text = val
 		self.closing = False
 		self.visible = True
+		self.start_time = time.time()
 		
 		length = self.obj.dimensions.x
 		self.obj.worldPosition.x = -length/2
@@ -74,6 +77,8 @@ class MajorText:
 		if self.closing:
 			self.scale = self.scale * 0.9
 		else:
+			if time.time() - self.start_time > self.MAX_TIME:
+				self.close()
 			self.scale = self.scale * 0.9 + 0.1
 		self.obj.color[3] = self.scale ** 5
 		for child in self.obj.childrenRecursive:
@@ -102,12 +107,40 @@ class RadioBox:
 	"""Where messages via the radio appear"""
 	PADDING = 0.2
 	MAX_WIDTH = 5.0
+	MAX_TIME = 10.0
 	def __init__(self, root_obj):
 		self.obj = root_obj.groupMembers['RadioMessage']
 		fix_text(self.obj)
 		self._final_text = ''
-		self.text = ""
-		self.visible = False
+		self.closing = True
+		self.start_time = time.time()
+		
+		self.pointer_target = mathutils.Vector([0, 0])
+		
+		# Set objects to "off"
+		left = self.obj.childrenRecursive['LeftPane']
+		right = self.obj.childrenRecursive['RightPane']
+		pointer = self.obj.childrenRecursive['Pointer']
+		
+		left.localScale.y = 0
+		left.color[3] = 0
+		right.localScale.y = 0
+		right.color[3] = 0
+		self.obj.color[3] = 0
+		
+		pointer.color[3] = 0
+		
+		for obj in left.childrenRecursive:
+			obj.localScale.y = 0
+			obj.color[3] = 0
+		for obj in right.childrenRecursive:
+			obj.localScale.y = 0
+			obj.color[3] = 0
+		
+		
+		#self.text = "This is some text"
+		
+		
 		
 	@property
 	def visible(self):
@@ -130,6 +163,8 @@ class RadioBox:
 		words = val.split(' ')
 		self.obj.text = ''
 		self.visible = True
+		self.start_time = time.time()
+		self.closing = False
 		for word in words:
 			old_text = self.obj.text
 			self.obj.text += word + ' '
@@ -144,13 +179,6 @@ class RadioBox:
 		
 		left = self.obj.childrenRecursive['LeftPane']
 		right = self.obj.childrenRecursive['RightPane']
-		left.localScale.y = height + self.PADDING*2
-		right.localScale.y = height + self.PADDING*2
-		
-		for obj in left.childrenRecursive:
-			obj.localScale.y = 1/(height + self.PADDING*2)
-		for obj in right.childrenRecursive:
-			obj.localScale.y = 1/(height + self.PADDING*2)
 			
 		right.localPosition.x = width + self.PADDING
 		
@@ -158,11 +186,68 @@ class RadioBox:
 		self.obj.text = ''
 		
 	def update(self):
-		if len(self.obj.text) < len(self._final_text):
-			self.obj.text = self._final_text[0:len(self.obj.text) + 1]
+		if not self.closing:
+			# Type the text
+			if len(self.obj.text) < len(self._final_text):
+				self.obj.text = self._final_text[0:len(self.obj.text) + 1]
+			
+			# Check the timeout
+			if time.time() - self.start_time > self.MAX_TIME:
+				self.close()
+				
+			border_target = self.obj.dimensions.y
+			color_target = 1
+		else:
+			border_target = 0
+			color_target = 0
+			
+		left = self.obj.childrenRecursive['LeftPane']
+		right = self.obj.childrenRecursive['RightPane']
+		pointer = self.obj.childrenRecursive['Pointer']
+		
+		current_height = left.localScale.y - self.PADDING*2
+		height = border_target * 0.1 + current_height * 0.9
+		
+		current_color = left.color[3]
+		color = color_target * 0.1 + current_color * 0.9
+		
+		if color > 0.001:
+			left.localScale.y = height + self.PADDING*2
+			left.color[3] = color
+			right.localScale.y = height + self.PADDING*2
+			right.color[3] = color
+			
+			self.obj.color[3] = color
+			pointer.color[3] = color
+			
+			for obj in left.childrenRecursive:
+				obj.localScale.y = 1/(height + self.PADDING*2)
+				obj.color[3] = color
+			for obj in right.childrenRecursive:
+				obj.localScale.y = 1/(height + self.PADDING*2)
+				obj.color[3] = color
+			self._update_pointer()
+			
+			
+	def _update_pointer(self):
+		pointer = self.obj.childrenRecursive['Pointer']
+		world_pos = mathutils.Vector(self.pointer_target) - mathutils.Vector([0.5, 0.5])
+		world_pos.y *= -1
+		aspect = (bge.render.getWindowHeight() / bge.render.getWindowWidth())
+		world_pos.x = world_pos.x * self.obj.scene.active_camera.ortho_scale / 2 / aspect
+		world_pos.y = world_pos.y * self.obj.scene.active_camera.ortho_scale / 2
+		delta = pointer.worldPosition.xy - world_pos.xy
+		
+		
+		pointer.worldOrientation = [0, 0, math.atan2(
+			delta.x, -delta.y
+		) - math.pi]
+		
+		pointer.localScale.y = delta.length - 0.2
+			
 			
 	def close(self):
-		self.visible = False
+		self.closing = True
 			
 	def show_all(self):
 		"""Show the text instantly"""
@@ -173,21 +258,9 @@ class RadioBox:
 		return len(self.obj.text) == len(self._final_text)
 			
 	def set_pointer_position(self, screen_pos):
-		pointer = self.obj.children['Pointer']
-		world_pos = mathutils.Vector(screen_pos) - mathutils.Vector([0.5, 0.5])
-		world_pos.y *= -1
-		aspect = (bge.render.getWindowHeight() / bge.render.getWindowWidth())
-		world_pos.x = world_pos.x * self.obj.scene.active_camera.ortho_scale / 2 / aspect
-		world_pos.y = world_pos.y * self.obj.scene.active_camera.ortho_scale / 2
-		#pointer.worldPosition.x = world_pos.x
-		delta = pointer.worldPosition.xy - world_pos.xy
+		pointer = self.obj.childrenRecursive['Pointer']
+		self.pointer_target = mathutils.Vector(screen_pos)
 		
-		
-		pointer.worldOrientation = [0, 0, math.atan2(
-			delta.x, -delta.y
-		) - math.pi]
-		
-		pointer.localScale.y = delta.length - 0.2
 
 
 
