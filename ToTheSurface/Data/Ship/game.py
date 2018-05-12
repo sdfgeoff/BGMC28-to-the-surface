@@ -25,7 +25,7 @@ class Game():
         self.ship = ship.Ship(ship_obj)
         self.hud = None
 
-        if not os.path.exists:
+        if not os.path.exists(hud.SCREENSHOT_PATH):
             os.mkdir(hud.SCREENSHOT_PATH)
 
         for file_name in os.listdir(hud.SCREENSHOT_PATH):
