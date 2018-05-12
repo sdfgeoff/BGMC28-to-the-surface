@@ -148,4 +148,4 @@ class Game():
                 if dist < message_obj.localScale.x: #assume round
                     if self.hud.radio_box_right.closing:
                         self.hud.radio_box_right.text = message
-                        self.heard_messages.append(area)
+                        self.heard_messages.append(message)
