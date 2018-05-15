@@ -4,9 +4,10 @@ import mathutils
 import time
 import os
 import math
+import text_tools
+import common
 
-BASE_PATH = os.path.dirname(os.path.abspath(__file__))
-SCREENSHOT_PATH = BASE_PATH + '/../Found'
+SCREENSHOT_PATH = common.BASE_PATH + '/../Found'
 
 class HUD:
     def __init__(self, scene):
@@ -56,7 +57,7 @@ class MajorText:
     MAX_TIME = 8.0
     def __init__(self, root_obj):
         self.obj = root_obj
-        fix_text(self.obj)
+        text_tools.fix_text(self.obj)
         self.start_time = time.time()
         self.scale = 0
         self.closing = True
@@ -130,7 +131,7 @@ class RadioBox:
     MAX_TIME = 10.0
     def __init__(self, root_obj):
         self.obj = root_obj.groupMembers['RadioMessage']
-        fix_text(self.obj)
+        text_tools.fix_text(self.obj)
         self._final_text = ''
         self.closing = True
         self.start_time = time.time()
@@ -156,10 +157,6 @@ class RadioBox:
         for obj in right.childrenRecursive:
             obj.localScale.y = 0
             obj.color[3] = 0
-
-
-        #self.text = "This is some text"
-
 
 
     @property
@@ -289,9 +286,9 @@ class LogBook:
         self._left_page = LogPanel(self.objs['LeftImage'])
         self._right_page = LogPanel(self.objs['RightImage'])
         self.close_text = self.objs['CloseText']
-        fix_text(self.objs['FoundText'])
-        fix_text(self.objs['PageNumText'])
-        fix_text(self.close_text)
+        text_tools.fix_text(self.objs['FoundText'])
+        text_tools.fix_text(self.objs['PageNumText'])
+        text_tools.fix_text(self.close_text)
 
         self.visible = False
         self._location_list = []
@@ -381,10 +378,10 @@ class LogPanel:
         self.img = root_obj
         self.text_obj = self.img.children[0]
 
-        fix_text(self.text_obj)
+        text_tools.fix_text(self.text_obj)
 
         self.texture = bge.texture.Texture(self.img, 0)
-        self.texture.source = bge.texture.ImageFFmpeg(BASE_PATH + "/None.png")
+        self.texture.source = bge.texture.ImageFFmpeg(common.BASE_PATH + "/None.png")
         self.texture.refresh(True)
 
         self._location = ""
@@ -434,31 +431,8 @@ class LogPanel:
     @image.setter
     def image(self, image_name):
         if image_name == None:
-            self.texture.source.reload(BASE_PATH + "/None.png")
+            self.texture.source.reload(common.BASE_PATH + "/None.png")
             self.texture.refresh(False)
         else:
             self.texture.source.reload(image_name)
             self.texture.refresh(False)
-
-
-def fix_text(obj):
-    '''Compute a font object's ideal resolution assuming an orthographic camera'''
-    # Defined in blender source: an object 1 unit high with a resultion of 1 will have 100px
-    default_px_per_bu = 100
-
-    window_width = bge.render.getWindowWidth()
-
-    # Measure the size of the font object (height)
-    text = obj.text
-    obj.text = '|'
-    obj_height = obj.dimensions[1]
-    obj.text = text
-
-    if not obj.scene.active_camera.perspective:
-        view_width = obj.scene.active_camera.ortho_scale
-    else:
-        raise Exception("Only for orthographic cameras at the moment")
-
-
-    pixel_ratio = window_width / view_width # pixels / bu
-    obj_pixels = pixel_ratio * obj_height

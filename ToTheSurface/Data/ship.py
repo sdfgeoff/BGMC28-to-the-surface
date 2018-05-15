@@ -23,19 +23,14 @@ def init(cont):
 
 
 
-class NamedList(list):
-    def __init__(self):
-        super().__init__()
 
-    def __getitem__(self, name):
-        return next(i for i in self if i.name == name)
 
 
 class Ship:
     """The thing the player flies around"""
     def __init__(self, rootobj):
         self.rootobj = rootobj
-        objs = NamedList()
+        objs = common.NamedList()
         objs.append(rootobj)
         for child in rootobj.childrenRecursive:
             objs.append(child)
