@@ -1,4 +1,5 @@
 *.pyc
 __pycache__
 *.blend[1-9]
-ToTheSurface/Levels/*.svg
+ToTheSurface/Data/*.svg
+Found

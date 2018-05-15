@@ -2,7 +2,7 @@ UPBGE = upbge
 BLENDER = blender
 
 
-LEVEL_SOURCE_IMAGES = $(wildcard ToTheSurface/Levels/*.png)
+LEVEL_SOURCE_IMAGES = $(wildcard ToTheSurface/Data/level.png)
 LEVEL_SVGS = $(patsubst %.png, %.svg, $(LEVEL_SOURCE_IMAGES))
 LEVEL_BLENDS = $(patsubst %.png, %.blend, $(LEVEL_SOURCE_IMAGES))
 

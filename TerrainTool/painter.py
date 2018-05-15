@@ -7,7 +7,7 @@ import config
 import time
 
 
-levelname = 'test'
+levelname = 'level'
 
 
 NAME_TO_PARAM = {
@@ -32,7 +32,7 @@ def selector(cont):
 
 LEVEL_DIR = os.path.normpath(os.path.join(
 	os.path.dirname(os.path.abspath(__file__)), 
-	'../ToTheSurface/Levels'
+	'../ToTheSurface/Data'
 ))
 ROOT_DIR = os.path.normpath(os.path.join(
 	os.path.dirname(os.path.abspath(__file__)), 
@@ -322,7 +322,6 @@ class WorldMap():
 		image = Image.open(filename + '.png')
 		self.resolution = mathutils.Vector(image.size)
 		self.tex.source.load(b'\xFF\x00\xFF' * (image.size[0] * image.size[1]), image.size[0], image.size[1])
-		
 		self.tex.source.plot(
 			image.tobytes(), 
 			image.size[0], image.size[0],
