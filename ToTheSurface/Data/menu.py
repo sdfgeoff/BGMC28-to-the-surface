@@ -8,8 +8,11 @@ import os
 ABOUT_TEXT = """\
 The first adventure game I played was "advent.exe" otherwise known as "Colossal Cave Adventure". In it there were a few puzzles, and no combat to speak of. This game is my attempt to make a game in a similar vein: it's mostly about the exploration of the environment rather than actually achieving anything.
 Due to the short timeframe of this game jam, the game world is smaller than I planned, but I hope you enjoy it anyway.
+Music is "The Earth is Blue" by the artist Stellardrone.
 
                                         - sdfgeoff
+
+
 """
 
 CONTROLS_TEXT = """\
@@ -30,6 +33,7 @@ def init(cont):
 
 class Menu:
     def __init__(self, scene):
+        game.Soundtrack()
         self.scene = scene
         for obj in scene.objects:
             if type(obj) == bge.types.KX_FontObject:

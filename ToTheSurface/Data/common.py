@@ -1,4 +1,7 @@
 import os
+import time
+import bge
+
 
 class FunctionList(list):
     def fire(self, *args, **kwargs):

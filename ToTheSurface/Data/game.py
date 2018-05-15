@@ -3,6 +3,9 @@ import ship
 import hud
 import os
 import math
+import aud
+import common
+import time
 
 LEGKEY = bge.events.EKEY
 THRUSTKEY = bge.events.UPARROWKEY
@@ -11,6 +14,7 @@ RIGHTKEY = bge.events.RIGHTARROWKEY
 
 SKIPTEXTKEY = bge.events.SPACEKEY
 LOGBOOKKEY = bge.events.LKEY
+
 
 def init(cont):
     if 'GAME' not in cont.owner:
@@ -21,9 +25,11 @@ def init(cont):
 
 class Game():
     def __init__(self, ship_obj):
+        Soundtrack()
         self.scene = ship_obj.scene
         self.ship = ship.Ship(ship_obj)
         self.hud = None
+
 
         if not os.path.exists(hud.SCREENSHOT_PATH):
             os.mkdir(hud.SCREENSHOT_PATH)
@@ -149,3 +155,20 @@ class Game():
                     if self.hud.radio_box_right.closing:
                         self.hud.radio_box_right.text = message
                         self.heard_messages.append(message)
+
+
+
+class Soundtrack:
+    DEVICE = aud.device()
+    def __init__(self):
+        factory = aud.Factory(common.BASE_PATH + "/Stellardrone - The Earth Is Blue.ogg").loop(-1)
+        # play the audio, this return a handle to control play/pause
+        self.handle = self.DEVICE.play(factory)
+
+        if "start_time" not in bge.logic.globalDict:
+            bge.logic.globalDict["start_time"] = time.time()
+            elapsed = 0
+        else:
+            elapsed = time.time() - bge.logic.globalDict["start_time"]
+        self.handle.position = elapsed
+        self.handle.volume = 1.0

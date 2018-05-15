@@ -272,8 +272,7 @@ class Ship:
 class HitSound:
     DEVICE = aud.device()
     def __init__(self):
-        path = os.path.dirname(os.path.abspath(__file__))
-        factory = aud.Factory(path + '/booster.wav').loop(-1)
+        factory = aud.Factory(common.BASE_PATH + '/booster.wav').loop(-1)
 
         # play the audio, this return a handle to control play/pause
         self.handle = self.DEVICE.play(factory)
@@ -297,8 +296,7 @@ class HitSound:
 class BoosterSound:
     DEVICE = aud.device()
     def __init__(self):
-        path = os.path.dirname(os.path.abspath(__file__))
-        factory = aud.Factory(path + '/booster.wav').loop(-1)
+        factory = aud.Factory(common.BASE_PATH + '/booster.wav').loop(-1)
 
         # play the audio, this return a handle to control play/pause
         self.handle = self.DEVICE.play(factory)
@@ -323,8 +321,7 @@ class BoosterSound:
 class WindSound:
     DEVICE = aud.device()
     def __init__(self):
-        path = os.path.dirname(os.path.abspath(__file__))
-        factory = aud.Factory(path + '/wind.wav').loop(-1)
+        factory = aud.Factory(common.BASE_PATH + '/wind.wav').loop(-1)
 
         self.oscillator = 0
 
@@ -346,8 +343,7 @@ class WindSound:
 class LegMotorSound:
     DEVICE = aud.device()
     def __init__(self):
-        path = os.path.dirname(os.path.abspath(__file__))
-        factory = aud.Factory(path + '/legmotors.wav').loop(-1)
+        factory = aud.Factory(common.BASE_PATH + '/legmotors.wav').loop(-1)
 
         self.handle = self.DEVICE.play(factory)
         self.handle.volume = 0.001
