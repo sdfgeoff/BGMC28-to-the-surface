@@ -63,7 +63,7 @@ class Ship:
         self.left_leg_sound = LegMotorSound()
         self.right_leg_sound = LegMotorSound()
 
-
+        self.is_underwater = False
         self.on_ship_move = common.FunctionList()  # Called with world position
 
     @property
@@ -101,8 +101,10 @@ class Ship:
     def _check_underwater(self):
         start = self.rootobj.worldPosition
         end = start + mathutils.Vector([0, 1, 0])
+        self.is_underwater = False
         if self.rootobj.rayCast(start, end, 50, "WATER")[0] is not None:
             # Underwater
+            self.is_underwater = True
             self.rootobj.applyForce([0, 0, 15.0], False)
             self.rootobj.applyForce(-self.rootobj.worldLinearVelocity * 5, False)
 
@@ -116,18 +118,20 @@ class Ship:
         for constraint_name in self._leg_constraints:
             target = 1.0 if self.legs_deployed else -1.0
             if target > 0:
-                force = 3
+                force = 1.5
             else:
-                force = 1000
+                force = 20
             if constraint_name == 'left':
                 target *= -1
 
             constraint = self._leg_constraints[constraint_name]
-            constraint.setParam(10, target, force)
+            constraint.setParam(10, target * 3.0, force)
             if constraint_name == 'left':
                 self.left_leg_sound.set_position(constraint.getParam(4))
             else:
                 self.right_leg_sound.set_position(constraint.getParam(4))
+        ang_vel = self.rootobj.worldAngularVelocity.y
+
 
     def _update_drag(self):
         damping = self.rootobj.worldAngularVelocity.copy()
@@ -139,8 +143,8 @@ class Ship:
         drag *= -LIN_DRAG
 
         self.rootobj.applyForce(drag)
-        self.objs['LeftLegPhysics'].applyForce(drag)
-        self.objs['RightLegPhysics'].applyForce(drag)
+        self.objs['LeftLegPhysics'].applyForce(drag*self.objs['LeftLegPhysics'].mass)
+        self.objs['RightLegPhysics'].applyForce(drag*self.objs['RightLegPhysics'].mass)
 
         self.wind_sound.set_velocity(drag.length)
 
@@ -283,7 +287,7 @@ class HitSound:
     def set_speed(self, percent):
         accel = self.prev_speed - percent
         self.prev_speed = percent
-        if abs(accel) > 1.0:
+        if abs(accel) > 0.5:
             self.handle.volume = max(0, -accel, self.handle.volume)
             self.handle.pitch = bge.logic.getRandomFloat()*5
 
@@ -310,7 +314,7 @@ class BoosterSound:
         self.prev_percent = percent
 
 
-        self.handle.volume = percent ** 2
+        self.handle.volume = (percent ** 2)
         self.handle.pitch = max(0, (diff * 4 + 1.0) ** 2.0 * 0.8 + self.oscillator)
 
 

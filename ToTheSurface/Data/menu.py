@@ -4,11 +4,13 @@ import common
 import mathutils
 import game
 import os
+import aud
 
 ABOUT_TEXT = """\
 The first adventure game I played was "advent.exe" otherwise known as "Colossal Cave Adventure". In it there were a few puzzles, and no combat to speak of. This game is my attempt to make a game in a similar vein: it's mostly about the exploration of the environment rather than actually achieving anything.
 Due to the short timeframe of this game jam, the game world is smaller than I planned, but I hope you enjoy it anyway.
-Music is "The Earth is Blue" by the artist Stellardrone.
+
+Music is "The Earth is Blue" by the artist Stellardrone. Voices are from Apollo 11 courtesy of NASA.
 
                                         - sdfgeoff
 
@@ -39,6 +41,8 @@ class Menu:
             if type(obj) == bge.types.KX_FontObject:
                 text_tools.fix_text(obj)
 
+        self.beep = Beep()
+
         Button(self.scene.objects["StartButton"], "Start").on_click.append(self.start_game)
         Button(self.scene.objects["AboutButton"], "About").on_click.append(self._toggle_about)
         Button(self.scene.objects["ControlsButton"], "Controls").on_click.append(self._toggle_controls)
@@ -56,6 +60,7 @@ class Menu:
     def _toggle_about(self):
         self.main_text.visible = True
         self.main_text.text = ABOUT_TEXT
+        self.beep.play()
 
     def _toggle_controls(self):
         self.main_text.visible = True
@@ -66,6 +71,7 @@ class Menu:
             bge.events.EventToString(game.LEGKEY),
             bge.events.EventToString(game.LOGBOOKKEY)
         )
+        self.beep.play()
 
     def start_game(self):
         bge.logic.startGame(os.path.join(common.BASE_PATH, 'game.blend'))
@@ -116,6 +122,17 @@ class Button:
         text_obj.text = val
         width = text_obj.dimensions.x
         text_obj.worldPosition.x = self.obj.worldPosition.x - width - 0.1
+
+
+class Beep:
+    DEVICE = aud.device()
+    def __init__(self):
+        self.factory = aud.Factory(common.BASE_PATH + '/find.wav')
+
+    def play(self):
+        handle = self.DEVICE.play(self.factory)
+        handle.volume = 0.2
+
 
 
 class TextBox:

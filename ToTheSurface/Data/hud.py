@@ -6,13 +6,14 @@ import os
 import math
 import text_tools
 import common
+import aud
 
 SCREENSHOT_PATH = common.BASE_PATH + '/../Found'
 
 class HUD:
     def __init__(self, scene):
         self.scene = scene
-        self.radio_box_left = RadioBox(scene.objects['RadioBoxLeft'])
+        self.radio_box_left = RadioBox(scene.objects['RadioBoxLeft'], sound=False)
         self.radio_box_right = RadioBox(scene.objects['RadioBoxRight'])
         self.major_text = MajorText(scene.objects['MajorText'])
 
@@ -54,7 +55,7 @@ class HUD:
 
 
 class MajorText:
-    MAX_TIME = 8.0
+    MAX_TIME = 5.0
     def __init__(self, root_obj):
         self.obj = root_obj
         text_tools.fix_text(self.obj)
@@ -63,6 +64,8 @@ class MajorText:
         self.closing = True
 
         #self.text = ''
+
+        self.sound = FoundSound()
 
 
     @property
@@ -83,6 +86,7 @@ class MajorText:
     def text(self, val):
         # Compute final text with newlines
         self.obj.color = [1, 1, 1, 0]
+        self.sound.play()
         self.scale = 0
         self.obj.text = val
         self.closing = False
@@ -128,13 +132,15 @@ class RadioBox:
     """Where messages via the radio appear"""
     PADDING = 0.2
     MAX_WIDTH = 5.0
-    MAX_TIME = 10.0
-    def __init__(self, root_obj):
+    MAX_TIME = 8.0
+    def __init__(self, root_obj, sound=True):
         self.obj = root_obj.groupMembers['RadioMessage']
         text_tools.fix_text(self.obj)
         self._final_text = ''
         self.closing = True
         self.start_time = time.time()
+        self.sound = VoiceSound()
+        self._enable_sound = sound
 
         self.pointer_target = mathutils.Vector([0, 0])
 
@@ -179,6 +185,8 @@ class RadioBox:
         # Compute final text with newlines
         words = val.split(' ')
         self.obj.text = ''
+        if self._enable_sound:
+            self.sound.set_volume(1.0)
         self.visible = True
         self.start_time = time.time()
         self.closing = False
@@ -264,6 +272,8 @@ class RadioBox:
 
 
     def close(self):
+        if self._enable_sound:
+            self.sound.set_volume(0.0)
         self.closing = True
 
     def show_all(self):
@@ -436,3 +446,54 @@ class LogPanel:
         else:
             self.texture.source.reload(image_name)
             self.texture.refresh(False)
+
+
+class VoiceSound:
+    DEVICE = aud.device()
+    raw = aud.Factory(common.BASE_PATH + '/voice.ogg')
+    beep = aud.Factory(common.BASE_PATH + '/beep.wav')
+
+    factory1 = raw.loop(-1)
+    factory2 = raw.lowpass(440, 2).highpass(220, 1.5).loop(-1)
+
+    def __init__(self):
+
+        self.handle1 = self.DEVICE.play(self.factory1)
+        self.handle2 = self.DEVICE.play(self.factory2)
+        self.handle1.volume = 0.001
+        self.handle2.volume = 0.001
+        self.handle1.position = bge.logic.getRandomFloat() * 30
+        self.handle2.position = self.handle1.position
+
+        self.vol = 0.0
+        self.muffled = False
+
+    def set_volume(self, vol):
+        self.vol = vol
+        self.DEVICE.play(self.beep)
+        self.update()
+
+    def update(self):
+        if not self.muffled:
+            self.handle1.volume = self.vol * 0.5
+            self.handle2.volume = 0.0
+        else:
+            self.handle2.volume = self.vol * 0.5
+            self.handle1.volume = 0.0
+        #if vol > 0.5:
+
+
+    def set_muffle(self, val):
+        self.muffled = val
+        self.update()
+
+
+
+class FoundSound:
+    DEVICE = aud.device()
+    def __init__(self):
+        self.factory = aud.Factory(common.BASE_PATH + '/find.wav')
+
+    def play(self):
+        handle = self.DEVICE.play(self.factory)
+        handle.volume = 0.5

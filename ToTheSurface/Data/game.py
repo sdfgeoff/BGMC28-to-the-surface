@@ -25,7 +25,7 @@ def init(cont):
 
 class Game():
     def __init__(self, ship_obj):
-        Soundtrack()
+        self.track = Soundtrack()
         self.scene = ship_obj.scene
         self.ship = ship.Ship(ship_obj)
         self.hud = None
@@ -61,6 +61,11 @@ class Game():
 
         if not self.hud.log_book.visible:
             self.ship.update()
+
+        muffled = self.hud.log_book.visible or self.ship.is_underwater
+        self.track.muffle(muffled)
+        self.hud.radio_box_right.sound.set_muffle(muffled)
+        self.hud.radio_box_left.sound.set_muffle(muffled)
         self.hud.update()
 
 
@@ -161,14 +166,28 @@ class Game():
 class Soundtrack:
     DEVICE = aud.device()
     def __init__(self):
-        factory = aud.Factory(common.BASE_PATH + "/Stellardrone - The Earth Is Blue.ogg").loop(-1)
+        raw = aud.Factory(common.BASE_PATH + "/Stellardrone - The Earth Is Blue.ogg")
+        normal = raw.loop(-1)
+        muffled = raw.lowpass(440, 2).highpass(220, 1.5).loop(-1)
         # play the audio, this return a handle to control play/pause
-        self.handle = self.DEVICE.play(factory)
+        self.handle1 = self.DEVICE.play(normal)
+        self.handle2 = self.DEVICE.play(muffled)
 
         if "start_time" not in bge.logic.globalDict:
             bge.logic.globalDict["start_time"] = time.time()
             elapsed = 0
         else:
             elapsed = time.time() - bge.logic.globalDict["start_time"]
-        self.handle.position = elapsed
-        self.handle.volume = 1.0
+        self.handle1.position = elapsed
+        self.handle2.position = elapsed
+        self.handle1.volume = 0.5
+        self.handle2.volume = 0.0
+
+    def muffle(self, val):
+        if val:
+            self.handle2.volume = 0.5
+            self.handle1.volume = 0.0
+        else:
+            self.handle2.volume = 0.0
+            self.handle1.volume = 0.5
+
