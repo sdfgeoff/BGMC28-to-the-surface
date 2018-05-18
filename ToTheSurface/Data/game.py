@@ -28,6 +28,7 @@ class Game():
         self.track = Soundtrack()
         self.scene = ship_obj.scene
         self.ship = ship.Ship(ship_obj)
+        self.ship.on_end.append(self.end_game)
         self.hud = None
 
 
@@ -46,6 +47,7 @@ class Game():
         self.messages = {o['MESSAGE']:o for o in self.scene.objects if 'MESSAGE' in o}
         self.been_areas = []
         self.heard_messages = []
+        self.finished = False
 
     def update(self):
         if self.loaded == False:
@@ -67,6 +69,13 @@ class Game():
         self.hud.radio_box_right.sound.set_muffle(muffled)
         self.hud.radio_box_left.sound.set_muffle(muffled)
         self.hud.update()
+
+    def end_game(self):
+        if not self.finished:
+            self.hud.show_end()
+            bge.logic.globalDict["found"] = self.been_areas
+            bge.logic.globalDict["all"] = list(self.areas.keys())
+            self.finished = True
 
 
     def load(self):

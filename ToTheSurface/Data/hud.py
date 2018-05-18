@@ -20,10 +20,21 @@ class HUD:
         self.log_book = LogBook(scene.objects['LogBook'])
         self.log_icon_glow = False
 
+        self.ending = False
+        self.scene.objects['TheEnd'].color = [0, 0, 0, 1]
+
+
     def update(self):
         self.radio_box_left.update()
         self.radio_box_right.update()
         self.major_text.update()
+
+        if self.ending:
+            end = self.scene.objects['TheEnd']
+            col = end.color[0]
+            end.color = [col*1.1 + 0.0001] * 3 + [1]
+            if col > 0.999:
+                bge.logic.startGame("//end.blend")
 
     def step_text(self):
         if not self.major_text.all_visible:
@@ -52,6 +63,10 @@ class HUD:
         else:
             col = [0.5, 0.5, 0.5, 0.5]
         self.scene.objects['LogSymbol'].color = col
+
+    def show_end(self):
+        self.ending = True
+
 
 
 class MajorText:

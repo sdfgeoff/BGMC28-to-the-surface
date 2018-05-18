@@ -65,6 +65,7 @@ class Ship:
 
         self.is_underwater = False
         self.on_ship_move = common.FunctionList()  # Called with world position
+        self.on_end = common.FunctionList()  # Called with world position
 
     @property
     def speed(self):
@@ -167,7 +168,7 @@ class Ship:
                 "", 1, False, 0,
                 1
             )
-            if obj is not None:
+            if obj is not None and 'THEEND' not in obj:
                 dist = (rayhit - pos).length
                 particle = self.rootobj.scene.addObject(
                     "DustParticle",
@@ -266,7 +267,8 @@ class Ship:
 
 
     def _onhit(self, *args):
-
+        if 'THEEND' in args[0]:
+            self.on_end.fire()
         force = self.speed
         if len(args) == 4:
             for hitpoint in args[3]:

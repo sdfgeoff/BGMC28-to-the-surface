@@ -37,9 +37,6 @@ class Menu:
     def __init__(self, scene):
         game.Soundtrack()
         self.scene = scene
-        for obj in scene.objects:
-            if type(obj) == bge.types.KX_FontObject:
-                text_tools.fix_text(obj)
 
         self.beep = Beep()
 
@@ -112,6 +109,8 @@ class Button:
         self.obj["BUTTON"] = self
         self.on_click = common.FunctionList()
 
+        text_tools.fix_text(obj.children[0])
+
     @property
     def text(self):
         return self.obj.children[0].text
@@ -140,6 +139,7 @@ class TextBox:
         self.obj = obj
         self.width = width
         self.text = text
+        text_tools.fix_text(obj)
 
         self._orig_text = ""
 
