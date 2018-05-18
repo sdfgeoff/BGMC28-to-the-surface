@@ -304,6 +304,8 @@ class LogBook:
         self._location_list = []
         self._been_locations = []
 
+        self.sound = PageSound()
+
         self._page = 0
         self._num_pages = 0
 
@@ -322,9 +324,13 @@ class LogBook:
 
     @page.setter
     def page(self, num):
-        self._page = max(min(num, self._num_pages - 1), 0)
+        new = max(min(num, self._num_pages - 1), 0)
+        if new != self._page:
+            self.sound.play()
+            self._page = new
         self._update_page()
         self._update_text()
+
 
     def _update_page(self):
         left_index = self._page*2
@@ -493,6 +499,15 @@ class FoundSound:
     DEVICE = aud.device()
     def __init__(self):
         self.factory = aud.Factory(common.BASE_PATH + '/find.wav')
+
+    def play(self):
+        handle = self.DEVICE.play(self.factory)
+        handle.volume = 0.5
+
+class PageSound:
+    DEVICE = aud.device()
+    def __init__(self):
+        self.factory = aud.Factory(common.BASE_PATH + '/page.wav')
 
     def play(self):
         handle = self.DEVICE.play(self.factory)

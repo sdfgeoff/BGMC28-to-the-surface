@@ -127,7 +127,7 @@ class Button:
 class Beep:
     DEVICE = aud.device()
     def __init__(self):
-        self.factory = aud.Factory(common.BASE_PATH + '/find.wav')
+        self.factory = aud.Factory(common.BASE_PATH + '/page.wav')
 
     def play(self):
         handle = self.DEVICE.play(self.factory)

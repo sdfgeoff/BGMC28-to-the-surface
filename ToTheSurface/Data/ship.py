@@ -108,6 +108,9 @@ class Ship:
             self.rootobj.applyForce([0, 0, 15.0], False)
             self.rootobj.applyForce(-self.rootobj.worldLinearVelocity * 5, False)
 
+        self.left_booster_sound.underwater = self.is_underwater
+        self.right_booster_sound.underwater = self.is_underwater
+
     def _update_legs(self):
         for obj in self.objs:
             if 'ALIGN' in obj:
@@ -212,6 +215,11 @@ class Ship:
         self.objs['LeftFlame'].color = [self._left] * 3 + [1]
         self.objs['RightFlame'].color = [self._right] * 3 + [1]
 
+        temperature = self.objs['MainGraphics'].color
+        temperature[0] = temperature[0]*0.99 + self._left * 0.01
+        temperature[1] = temperature[1]*0.99 + self._right * 0.01
+        self.objs['MainGraphics'].color = temperature
+
     def _setup_legs(self):
         self.objs['LeftLegPhysics'].removeParent()
         self.objs['RightLegPhysics'].removeParent()
@@ -309,13 +317,14 @@ class BoosterSound:
 
         self.oscillator = 0
 
+        self.underwater = False
+
     def set_thrust(self, percent):
         diff = percent - self.prev_percent
         self.prev_percent = percent
 
-
         self.handle.volume = (percent ** 2)
-        self.handle.pitch = max(0, (diff * 4 + 1.0) ** 2.0 * 0.8 + self.oscillator)
+        self.handle.pitch = max(0, (diff * 4 + 1.0) ** 2.0 * 0.8 + self.oscillator - 0.3 * self.underwater)
 
 
         self.oscillator = (bge.logic.getRandomFloat() - 0.5) * 2 * 0.1 + self.oscillator * 0.9
@@ -365,5 +374,5 @@ class LegMotorSound:
         speed = min(speed, 0.016)
 
         self.handle.volume = max(0, speed * 10 - accel * 10)
-        self.handle.pitch = max(0, (speed * 50) ** 10 + 0.2 - accel * 10.0)
+        self.handle.pitch = max(0, (speed * 50) ** 10 + 0.2 - accel * 10.0 + math.sin(time.time()*10) * 0.05)
 
